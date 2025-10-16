@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Shawanlik Anime — Детали</title>
+<link rel="icon" href="" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+  :root{ --accent:#ff5c5c; --muted:#c1c1c1; --bg:#070708; }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:"Poppins",sans-serif;
+    color:#fff;
+    background: linear-gradient(180deg, rgba(7,7,7,0.95), rgba(10,10,10,0.95));
+  }
+
+  /* Background hero (poster blurred) */
+  .hero {
+    position:relative;
+    min-height:320px;
+    display:flex;
+    align-items:flex-end;
+    padding:28px;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-position:center; background-size:cover;
+    filter: blur(18px) brightness(.38);
+    transform: scale(1.05);
+    z-index:0;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 80%); z-index:1;
+  }
+
+  .hero-inner{
+    position:relative; z-index:2; width:100%; max-width:1100px; margin:0 auto; display:flex; gap:20px; align-items:flex-end;
+    padding-bottom:20px;
+  }
+
+  .poster-thumb{
+    width:220px; min-width:140px; border-radius:12px; overflow:hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    flex:0 0 auto;
+  }
+  .poster-thumb img{ width:100%; display:block; height:320px; object-fit:cover; }
+
+  .meta {
+    flex:1 1 auto; color:#fff;
+  }
+  .meta h2{ margin:0; font-size:22px; color:var(--accent); }
+  .meta .sub { color:var(--muted); margin-top:6px; font-size:14px; }
+  .chips{ margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ background:rgba(255,255,255,0.06); padding:6px 10px; border-radius:999px; font-size:13px; color:var(--muted); }
+
+  main.container { width:100%; max-width:1100px; margin:18px auto; padding:0 14px 60px; }
+  .content { display:flex; gap:22px; align-items:flex-start; }
+  .left { flex:1 1 620px; }
+  .right { width:360px; flex:0 0 auto; }
+
+  .description { background:rgba(18,18,18,0.9); border-radius:12px; padding:16px; color:var(--muted); line-height:1.55; }
+  .player-wrap { margin-top:14px; background:rgba(18,18,18,0.95); border-radius:10px; overflow:hidden; }
+  iframe { width:100%; height:420px; border:0; display:block; }
+
+  .back-btn { display:inline-block; margin-top:10px; background:transparent; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:8px; color:var(--muted); text-decoration:none; cursor:pointer; }
+
+  .info-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .info-item { background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:8px; font-size:14px; color:var(--muted); }
+
+  @media (max-width:900px){
+    .hero-inner{ flex-direction:column; align-items:center; text-align:center; gap:12px; padding-bottom:10px; }
+    .content{ flex-direction:column; }
+    .right{ width:100%; }
+    iframe{ height:260px; }
+  }
+</style>
+</head>
+<body>
+  <div id="hero" class="hero" aria-hidden="true">
+    <div class="hero-inner">
+      <div class="poster-thumb"><img id="posterImg" src="" alt="poster"/></div>
+      <div class="meta">
+        <h2 id="title">Загрузка...</h2>
+        <div class="sub" id="subline"> — </div>
+        <div class="chips" id="chips"></div>
+        <div style="margin-top:10px;">
+          <a id="backBtn" class="back-btn">← Назад в каталог</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="content">
+      <div class="left">
+        <div class="description" id="description">Загрузка данных...</div>
+
+        <div class="player-wrap" id="playerWrap" style="display:none; margin-top:14px;">
+          <iframe id="playerFrame" allowfullscreen></iframe>
+        </div>
+      </div>
+
+      <aside class="right">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="flex:1;"><strong>Озвучки / переводы</strong></div>
+        </div>
+
+        <div class="info-list" id="voicesList" style="margin-top:10px;"></div>
+
+        <div style="height:12px"></div>
+
+        <div><strong>Информация</strong></div>
+        <div class="info-list" id="infoList" style="margin-top:8px;"></div>
+      </aside>
+    </div>
+  </main>
+
+<script>
+(async function(){
+  function qs(name){ // read param
+    const u = new URL(location.href);
+    return u.searchParams.get(name);
+  }
+  function setHeroBg(url){
+    const hero = document.getElementById('hero');
+    if(!url) return;
+    hero.style.backgroundImage = `url('${url}')`;
+    // also set ::before background via inline style:
+    hero.style.setProperty('--bg-url', `url('${url}')`);
+    // but we actually use ::before which reads background-image from inline style (done below)
+    // To ensure ::before has the image, we set style attribute on hero::before by adding a style tag.
+    const beforeStyle = `
+      .hero::before{ background-image: url('${url}'); }
+    `;
+    const id = 'dynamic-hero-style';
+    let s = document.getElementById(id);
+    if(!s){
+      s = document.createElement('style'); s.id = id; document.head.appendChild(s);
+    }
+    s.textContent = beforeStyle;
+  }
+
+  function escapeHtml(str){ return String(str||'').replace(/[&<>"']/g, (m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  const id = qs('id');
+  const fromPage = qs('from_page') || '';
+  const backBtn = document.getElementById('backBtn');
+
+  backBtn.addEventListener('click', () => {
+    // go back to index with preserved page/search
+    if(fromPage){
+      location.href = `index.html`;
+    } else {
+      history.back();
+    }
+  });
+
+  if(!id){
+    document.getElementById('title').textContent = 'Не указан ID';
+    document.getElementById('description').textContent = 'Невозможно загрузить аниме без id. Вернитесь в каталог.';
+    return;
+  }
+
+  // fetch details
+  try {
+    const url = `https://api.anilibria.tv/v3/title/${encodeURIComponent(id)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('Не удалось получить данные');
+    const data = await res.json();
+
+    // title
+    const names = data.names || {};
+    const title = names.ru || names.en || names.orig || '—';
+    document.getElementById('title').innerHTML = escapeHtml(title);
+
+    // subtitle (year / length)
+    const subtitleParts = [];
+    if(data.episode_count) subtitleParts.push(`${data.episode_count} эп.`);
+    if(data.start_date) subtitleParts.push(`Начало: ${data.start_date}`);
+    document.getElementById('subline').textContent = subtitleParts.join(' • ');
+
+    // poster (prefer medium or original)
+    const posterPath = (data.posters && (data.posters.original?.url || data.posters.medium?.url || data.posters.small?.url)) || '';
+    const posterFull = posterPath ? `https://anilibria.tv${posterPath}` : '';
+    if(posterFull){
+      document.getElementById('posterImg').src = posterFull;
+      setHeroBg(posterFull);
+    } else {
+      document.getElementById('posterImg').src = '';
+    }
+
+    // chips / genres
+    const chips = document.getElementById('chips');
+    chips.innerHTML = '';
+    if(Array.isArray(data.genres) && data.genres.length){
+      data.genres.forEach(g => {
+        const el = document.createElement('div');
+        el.className = 'chip';
+        el.textContent = g;
+        chips.appendChild(el);
+      });
+    }
+
+    // description (clean)
+    let desc = data.description || '';
+    desc = desc.replace(/<\/?[^>]+(>|$)/g, "");
+    document.getElementById('description').textContent = desc || 'Описание отсутствует.';
+
+    // player - embed AniLibria iframe by id
+    const playerWrap = document.getElementById('playerWrap');
+    const playerFrame = document.getElementById('playerFrame');
+    playerFrame.src = `https://anilibria.tv/public/iframe.php?id=${encodeURIComponent(id)}`;
+    playerWrap.style.display = 'block';
+
+    // voices / translations - many APIs use "translations" or "voices" or "t"? Be defensive.
+    const voicesList = document.getElementById('voicesList');
+    voicesList.innerHTML = '';
+
+    // Try to find translations / available dubs in common fields
+    const possibleVoices = [];
+    if(Array.isArray(data.translations)) possibleVoices.push(...data.translations);
+    if(Array.isArray(data.video) && data.video.length){ possibleVoices.push(...data.video); }
+    if(Array.isArray(data.videos)) possibleVoices.push(...data.videos);
+    // also check data.audios / data.voice
+    if(Array.isArray(data.audios)) possibleVoices.push(...data.audios);
+
+    // fallback: sometimes API returns "available" or "translations" as objects
+    if(Object.prototype.hasOwnProperty.call(data, 'available') && Array.isArray(data.available)){
+      possibleVoices.push(...data.available);
+    }
+
+    // render found voices intelligently
+    if(possibleVoices.length){
+      // try to dedupe and present human-readable names
+      const seen = new Set();
+      possibleVoices.forEach(item => {
+        // item could be string or object
+        let label = '';
+        if(typeof item === 'string') label = item;
+        else if(item.name) label = item.name;
+        else if(item.lang) label = String(item.lang);
+        else if(item.translation) label = String(item.translation);
+        else label = JSON.stringify(item).slice(0,60);
+        if(!label) return;
+        if(seen.has(label)) return;
+        seen.add(label);
+        const node = document.createElement('div');
+        node.className = 'info-item';
+        node.textContent = label;
+        voicesList.appendChild(node);
+      });
+    } else {
+      // if nothing found, try from data.names/other fields
+      const fallback = (data.translations && typeof data.translations === 'string') ? data.translations : null;
+      const node = document.createElement('div');
+      node.className = 'info-item';
+      node.textContent = fallback || 'Информация об озвучке не обнаружена в API.';
+      voicesList.appendChild(node);
+    }
+
+    // info list (studio, season, status etc) - render any useful fields if present
+    const infoList = document.getElementById('infoList');
+    infoList.innerHTML = '';
+    const addInfo = (label, value) => {
+      if(!value) return;
+      const d = document.createElement('div'); d.className = 'info-item';
+      d.innerHTML = `<strong style="color:#fff;">${escapeHtml(label)}:</strong> ${escapeHtml(value)}`;
+      infoList.appendChild(d);
+    };
+
+    addInfo('Оригинал', data.names?.orig || '');
+    addInfo('Год начала', data.start_date || '');
+    addInfo('Эпизоды', data.episode_count || '');
+    addInfo('Продолжительность', data.duration || '');
+    addInfo('Статус', data.status || '');
+    addInfo('Студия', data.studio || '');
+    addInfo('Рейтинг', data.rating || '');
+
+    // store last visited id (optionally)
+    localStorage.setItem('sa_last_id', id);
+
+  } catch(err){
+    console.error(err);
+    document.getElementById('title').textContent = 'Ошибка загрузки';
+    document.getElementById('description').textContent = 'Не удалось получить данные. Проверь соединение или вернись в каталог.';
+  }
+
+})();
+</script>
+</body>
+</html>

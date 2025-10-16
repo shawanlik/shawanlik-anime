@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Shawanlik Anime — Каталог</title>
+<link rel="icon" href="" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+  :root {
+    --accent: #ff5c5c;
+    --bg: #070708;
+    --card: rgba(18,18,18,0.9);
+    --muted: #a9a9a9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Poppins",sans-serif;
+    background: linear-gradient(180deg, rgba(7,7,7,0.95) 0%, rgba(10,10,10,0.95) 100%);
+    color: #fff;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  header {
+    position: sticky; top: 0; z-index: 30;
+    background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.25));
+    backdrop-filter: blur(6px);
+    padding: 18px 14px;
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+  }
+  h1 {
+    margin:0;
+    color: var(--accent);
+    text-shadow: 0 4px 18px rgba(255,92,92,0.08);
+    font-size:22px;
+    letter-spacing:0.2px;
+  }
+  .top-row { width:100%; max-width:1100px; display:flex; gap:12px; align-items:center; justify-content:space-between; padding:0 6px; }
+  #search {
+    width:100%;
+    max-width:520px;
+    padding:10px 12px;
+    border-radius:10px;
+    border: none;
+    outline:none;
+    font-size:15px;
+  }
+  #catalog {
+    width:100%;
+    max-width:1100px;
+    margin:20px auto;
+    display:flex;
+    gap:22px;
+    flex-wrap:wrap;
+    justify-content:center;
+    padding:0 12px 40px;
+  }
+  .anime {
+    width:230px;
+    border-radius:12px;
+    overflow:hidden;
+    background: var(--card);
+    position:relative;
+    cursor:pointer;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    transition: transform .22s ease, box-shadow .22s ease;
+    display:flex;
+    flex-direction:column;
+  }
+  .anime:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 18px 40px rgba(0,0,0,0.8); }
+  .poster {
+    width:100%;
+    height:330px;
+    object-fit:cover;
+    display:block;
+    background:#111;
+  }
+  .card-info { padding:10px; text-align:center; flex:0 0 auto; }
+  .title { font-size:15px; font-weight:600; margin-bottom:6px; line-height:1.2; color:#fff; }
+  .desc { font-size:13px; color:var(--muted); height:40px; overflow:hidden; }
+  .load-more-wrap { text-align:center; padding:18px 0 60px; }
+  button#loadMore { background:var(--accent); color:#fff; border:none; padding:10px 18px; border-radius:10px; cursor:pointer; font-weight:600; }
+  .empty { color:var(--muted); padding:50px 0; text-align:center; width:100%; }
+  footer { text-align:center; color:var(--muted); padding:20px 0 50px; }
+  @media (max-width:600px){
+    .anime { width:92%; max-width:420px; }
+    .top-row { padding:0 6px; flex-direction:column; gap:8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="top-row">
+    <h1>Shawanlik Anime</h1>
+    <input id="search" placeholder="Поиск аниме... (Enter не обязателен)" />
+  </div>
+</header>
+
+<main>
+  <div id="catalog"></div>
+  <div class="load-more-wrap">
+    <button id="loadMore">Загрузить ещё</button>
+  </div>
+  <div id="empty" class="empty" style="display:none;">Ничего не найдено</div>
+</main>
+
+<footer>
+  <small>Каталог загружается через AniLibria API • Бесплатно • Shawanlik Anime</small>
+</footer>
+
+<script>
+(function(){
+  const catalog = document.getElementById('catalog');
+  const searchInput = document.getElementById('search');
+  const loadMoreBtn = document.getElementById('loadMore');
+  const emptyEl = document.getElementById('empty');
+
+  let page = parseInt(localStorage.getItem('sa_page') || '1', 10);
+  let limit = 12;
+  let search = localStorage.getItem('sa_search') || '';
+  let loading = false;
+
+  searchInput.value = search;
+
+  async function fetchPage(reset=false){
+    if(loading) return;
+    loading = true;
+    emptyEl.style.display = 'none';
+    if(reset){
+      page = 1;
+      catalog.innerHTML = '';
+    }
+
+    try {
+      const url = `https://api.anilibria.tv/v3/title/search?limit=${limit}&page=${page}&search=${encodeURIComponent(search)}`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('Ошибка сети');
+      const data = await res.json();
+      const list = data.list || [];
+      if(list.length === 0 && page === 1){
+        emptyEl.style.display = 'block';
+      }
+      list.forEach(a => {
+        const el = document.createElement('div');
+        el.className = 'anime';
+        // try to use medium poster; fallback to original / small.
+        const posterPath = a.posters && (a.posters.medium?.url || a.posters.original?.url || a.posters.small?.url) || '';
+        const posterSrc = posterPath ? `https://anilibria.tv${posterPath}` : '';
+
+        const title = (a.names && (a.names.ru || a.names.en || a.names.orig)) || '—';
+        const short = a.description ? (a.description.replace(/<\/?[^>]+(>|$)/g, "").substring(0,120)) : '';
+
+        el.innerHTML = `
+          <img class="poster" src="${posterSrc}" alt="${title}" loading="lazy" />
+          <div class="card-info">
+            <div class="title">${escapeHtml(title)}</div>
+            <div class="desc">${escapeHtml(short)}${short.length>0?'...':''}</div>
+          </div>
+        `;
+        el.addEventListener('click', () => {
+          // go to anime page with id
+          location.href = `anime.html?id=${a.id}&from_page=${page}`;
+        });
+        catalog.appendChild(el);
+      });
+
+      page++;
+      localStorage.setItem('sa_page', page);
+      localStorage.setItem('sa_search', search);
+    } catch(e){
+      console.error(e);
+      if(catalog.children.length === 0){
+        emptyEl.textContent = 'Ошибка загрузки. Проверь соединение.';
+        emptyEl.style.display = 'block';
+      }
+    } finally {
+      loading = false;
+    }
+  }
+
+  loadMoreBtn.addEventListener('click', () => fetchPage());
+
+  // live search with small debounce
+  let timer = null;
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(timer);
+    search = e.target.value.trim();
+    timer = setTimeout(() => {
+      localStorage.setItem('sa_search', search);
+      fetchPage(true);
+    }, 400);
+  });
+
+  function escapeHtml(str){
+    return String(str||'').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // initial load
+  fetchPage(false);
+})();
+</script>
+</body>
+</html>
